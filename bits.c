@@ -158,7 +158,7 @@ int signMask(void) {
  *   Rating: 2
  */
 int bitXor(int x, int y) {
-	return (~x & y) | (x & ~y);
+	return ~(x & y) & ~(~x & ~y);
 }
 
 // P3
@@ -318,23 +318,31 @@ int midpointTowardFirst(int x, int y) {
  *   Rating: 7
  */
 int isBetweenEitherOrder(int x, int a, int b) {
-    int sx = (x >> 31) & 1;
-    int sa = (a >> 31) & 1;
-    int sb = (b >> 31) & 1;
+    int sx = x >> 31;
+    int sa = a >> 31;
+    int sb = b >> 31;
 
-    int xgea = ((sx ^ sa) & (!sx)) |
-               (!(sx ^ sa) & !(((x + ~a + 1) >> 31) & 1));
+    int ds = sa ^ sb;
+    int dab = (a + ~b + 1) >> 31;
+    int aleb = !((ds & sa) | (~ds & dab));
 
-    int bgeqx = ((sb ^ sx) & (!sb)) |
-                (!(sb ^ sx) & !(((b + ~x + 1) >> 31) & 1));
+    int m = ~aleb + 1;
+    int nm = ~m;
 
-    int xgeb = ((sx ^ sb) & (!sx)) |
-               (!(sx ^ sb) & !(((x + ~b + 1) >> 31) & 1));
+    int lo = (a & m) | (b & nm);
+    int hi = (b & m) | (a & nm);
 
-    int ageqx = ((sa ^ sx) & (!sa)) |
-                (!(sa ^ sx) & !(((a + ~x + 1) >> 31) & 1));
+    int slo = lo >> 31;
+    int d1 = sx ^ slo;
+    int dxlo = (x + ~lo + 1) >> 31;
+    int xgelo = !((d1 & sx) | (~d1 & dxlo));
 
-    return (xgea & bgeqx) | (xgeb & ageqx);
+    int shi = hi >> 31;
+    int d2 = shi ^ sx;
+    int dhix = (hi + ~x + 1) >> 31;
+    int higex = !((d2 & shi) | (~d2 & dhix));
+
+    return xgelo & higex;
 }
 
 
@@ -645,21 +653,17 @@ int bitCount(int x) {
 int bitReverse(int x)
 {
 
-    int m1 = 0x55 | (0x55 << 8);
-    int m2 = 0x33 | (0x33 << 8);
-    int m4 = 0x0f | (0x0f << 8);
-    int m8 = 0xff | (0xff << 16);
+   int m16 = 0xff | (0xff << 8);
+    int m8  = m16 ^ (m16 << 8);
+    int m4  = m8 ^ (m8 << 4);
+    int m2  = m4 ^ (m4 << 2);
+    int m1  = m2 ^ (m2 << 1);
 
-    m1 = m1 | (m1 << 16);   // 0x55555555
-    m2 = m2 | (m2 << 16);   // 0x33333333
-    m4 = m4 | (m4 << 16);   // 0x0f0f0f0f
-
-    x = ((x & m1) << 1) | ((x >> 1) & m1);
-    x = ((x & m2) << 2) | ((x >> 2) & m2);
-    x = ((x & m4) << 4) | ((x >> 4) & m4);
+    x = (x << 16) | ((x >> 16) & m16);
     x = ((x & m8) << 8) | ((x >> 8) & m8);
-
-    x = (x << 16) | ((x >> 16) & 0xffff);
+    x = ((x & m4) << 4) | ((x >> 4) & m4);
+    x = ((x & m2) << 2) | ((x >> 2) & m2);
+    x = ((x & m1) << 1) | ((x >> 1) & m1);
 
     return x;
 }
